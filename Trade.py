@@ -9,6 +9,6 @@ class Trade:
     def close(self):
         pass
 
-    def logTrade(self):
+    def log(self):
         pass
 
