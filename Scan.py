@@ -3,6 +3,7 @@ from KEYS import *
 import datetime
 import pprint
 import json
+import sys
 
 
 class Scan:
@@ -14,9 +15,11 @@ class Scan:
         self.nextOpen = None
         self.nextClose = None
         self.SMA = None
-        self.minuteBar = None
+        self.SMAlist = None
+        self.lastXCandles = None
         self.openTrade = False
-        self.barColor = None
+        self.candleColor = None
+        self.latestCandle = None
 
     def lookForTrades(self):
         if self.isMarketOpen:
@@ -24,13 +27,25 @@ class Scan:
             #     print("waitng")
             #     print(self.currentTime)
             #     self.currentTime = datetime.datetime.now()
-            self.minuteBar = \
-            self.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="2020-06-19T11:54:00-04:00", timeframe="minute")[
-                self.symbol][0]
-            self.barColor = "red" if self.minuteBar.o > self.minuteBar.c else "green"
-            self.SMAlist = self.alpacaAPI.alpha_vantage.techindicators(symbol=self.symbol, interval="1min", time_period=10,
-                                                                   series_type="close")
-            self.SMA = float(self.SMAlist['Technical Analysis: SMA']["2020-06-19 11:55"]["SMA"])
+
+            self.lastXCandles = \
+                self.alpacaAPI.get_barset(symbols=self.symbol, limit=10, end="2020-06-24T13:58:00-04:00",
+                                          timeframe="minute")[
+                    self.symbol]
+            # candlesList = [[i.c for i in self.lastXCandles]]
+            candlesList = []
+            pprint.pprint(self.lastXCandles)
+            for i in self.lastXCandles:
+                candlesList.append(i.c)
+                print(i.c)
+                print(i.t)
+            print(sum(candlesList) / len(candlesList))
+            print(candlesList)
+            candlesList.pop(0)
+            print(candlesList)
+
+            sys.exit(0)
+            #self.candleColor = "red" if self.lastXCandles.o > self.lastXCandles.c else "green"
             self.isSignal()
         else:
             self.checkMarketConditions()
@@ -42,16 +57,16 @@ class Scan:
         self.nextClose = response.next_close
 
     def isSignal(self):
-        print(self.minuteBar)
-        print(self.barColor)
-        barSize = self.minuteBar.o - self.minuteBar.c
+        print(self.lastXCandles)
+        print(self.candleColor)
+        barSize = self.lastXCandles.o - self.lastXCandles.c
         minimumReq = barSize * 0.501
-        smaHeight = self.SMA - self.minuteBar.c
+        smaHeight = self.SMA - self.lastXCandles.c
         outsideSMA = False
         insideSMA = False
 
-        if self.barColor == "green":
-            #convery negative values to positive
+        if self.candleColor == "green":
+            # convery negative values to positive
             barSize = barSize * -1
             smaHeight = smaHeight * -1
             minimumReq = minimumReq * -1
