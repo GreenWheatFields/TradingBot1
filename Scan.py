@@ -1,9 +1,12 @@
+import time
+
 import alpaca_trade_api
 from KEYS import *
 import datetime
 import pprint
 import json
 import sys
+import requests
 
 
 class Scan:
@@ -20,6 +23,7 @@ class Scan:
         self.openTrade = False
         self.candleColor = None
         self.latestCandle = None
+        self.lastXClosingPrices = None
 
     def lookForTrades(self):
         if self.isMarketOpen:
@@ -28,40 +32,18 @@ class Scan:
             #     print(self.currentTime)
             #     self.currentTime = datetime.datetime.now()
 
-            self.lastXCandles = \
-                self.alpacaAPI.get_barset(symbols=self.symbol, limit=10, end="2020-06-24T13:58:00-04:00",
-                                          timeframe="minute")[
-                    self.symbol]
-            # candlesList = [[i.c for i in self.lastXCandles]]
-            candlesList = []
-            pprint.pprint(self.lastXCandles)
-            for i in self.lastXCandles:
-                candlesList.append(i.c)
-                print(i.c)
-                print(i.t)
-            print(sum(candlesList) / len(candlesList))
-            print(candlesList)
-            candlesList.pop(0)
-            print(candlesList)
-
+            self.lastXClosingPrices = self.getClosingPrices(10)
+            print(self.lastXClosingPrices)
             sys.exit(0)
             #self.candleColor = "red" if self.lastXCandles.o > self.lastXCandles.c else "green"
             self.isSignal()
         else:
             self.checkMarketConditions()
 
-    def checkMarketConditions(self):
-        response = self.alpacaAPI.get_clock()
-        self.isMarketOpen = response.is_open
-        self.nextOpen = response.next_open
-        self.nextClose = response.next_close
-
     def isSignal(self):
-        print(self.lastXCandles)
-        print(self.candleColor)
-        barSize = self.lastXCandles.o - self.lastXCandles.c
+        barSize = self.latestCandle.o - self.latestCandle.c
         minimumReq = barSize * 0.501
-        smaHeight = self.SMA - self.lastXCandles.c
+        smaHeight = self.SMA - self.latestCandle.c
         outsideSMA = False
         insideSMA = False
 
@@ -84,10 +66,40 @@ class Scan:
 
         if viableCrossover:
             print("viable crossover")
-
-
         else:
             print("non viable corssover")
+
+    def onTick(self):
+        #once awake, check prices, get new SMA, check for a signal
+        self.latestCandle = self.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="2020-06-24T9:29:00-04:00",timeframe="minute")[self.symbol]
+        if self.isSignal():
+            #do something
+            pass
+        else:
+            # do somethings else, proably sleep
+            pass
+
+    def checkMarketConditions(self):
+        response = self.alpacaAPI.get_clock()
+        self.isMarketOpen = response.is_open
+        self.nextOpen = response.next_open
+        self.nextClose = response.next_close
+
+    def getClosingPrices(self, amount: int) -> list:
+        #eventually should include premarket data, for now just going to call this method at 9:41
+        #return [i.c for i in self.alpacaAPI.get_barset(symbols=self.symbol, limit=amount, end="2020-06-24T9:29:00-04:00",timeframe="minute")[self.symbol]]
+        # testing iex extended
+        # do at 9:20
+        closing = []
+        #time.sleep(sleeptime)
+        while len(closing) < 10:
+            x = requests.get("https://cloud.iexapis.com/v1/stock/{}/quote?token={}".format(self.symbol,IEX_PRIVATE_KEY))
+            closing.append(x["extendedPrice"])
+            t = datetime.datetime.utcnow()
+            sleeptime = 60 - (t.second + t.microsecond / 1000000.0)
+            time.sleep(sleeptime)
+            # sub second precision, but it may be too fast for the api to update, hopefully not
+        return closing
 
     @staticmethod
     def KillSwitch(self):
