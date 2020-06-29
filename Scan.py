@@ -16,7 +16,7 @@ class Scan:
     def __init__(self, symbol):
         self.symbol = symbol
         self.currentTime = datetime.datetime.now()
-        self.testingTime = datetime.datetime(2020, 6, 26, 15, 40)
+        self.testingTime = datetime.datetime(2020, 6, 26, 14, 2l) #51
         self.isMarketOpen = True
         self.nextOpen = None
         self.nextClose = None
@@ -46,28 +46,21 @@ class Scan:
     def isSignal(self):
         toPositive = lambda x: x * -1
         subNoNegatives = lambda x, y: max(x, y) - min(x, y)
-        # barSize = self.latestCandle.o - self.latestCandle.c
-        # barSize = self.latestCandle.o - self.latestCandle.c if self.latestCandle.o > self.latestCandle.c else self.latestCandle.c - self.latestCandle.o
+        print("here")
         barSize = subNoNegatives(self.latestCandle.o, self.latestCandle.c)
         minimumReq = barSize * 0.501
         self.SMA = sum(self.lastXClosingPrices) / len(self.lastXClosingPrices)
-        # smaHeight = self.SMA - self.latestCandle.c
         smaHeight = subNoNegatives(self.SMA, self.latestCandle.c)
         insideSMA = True
         above = below = None
-
-        # if barSize <= 0:
-        #     barSize = toPositive(barSize)
-        #     minimumReq = toPositive(barSize)
-        # if smaHeight < 0:
-        #     smaHeight = toPositive(smaHeight)
 
         if smaHeight > barSize or smaHeight < 0:
             print("out of bounds")
             insideSMA = False
             above = smaHeight < 0
             below = not above
-
+        print(self.SMA)
+        print(self.lastXClosingPrices)
         viableCrossover = smaHeight > minimumReq and insideSMA
         if above:
             return "bull"
@@ -78,15 +71,19 @@ class Scan:
                 return "bull"
             else:
                 return "bear"
+        else:
+            print("nonviablecross")
+
+
 
     def onTick(self):
         # once awake, check prices, get new SMA, check for a signal
         self.lastXClosingPrices = self.getClosingPrices(10)
-        print(self.lastXClosingPrices)
         self.latestCandle = Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="{}-04:00".format(self.testingTime.strftime(Scan.alpacaDateTimeFormat)), timeframe="minute")[self.symbol][0]
         self.lastXClosingPrices.pop(0)
         self.lastXClosingPrices.append(self.latestCandle.c)
         self.bias = self.isSignal()
+        print(self.bias)
         if self.bias == "bull":
             if not self.openTrade:
                 #open trade
@@ -107,7 +104,6 @@ class Scan:
 
     def getClosingPrices(self, amount: int) -> list:
         timedelta = datetime.timedelta(minutes=1)
-        print("here")
         candles = Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=amount, end="{}-04:00".format((self.testingTime - timedelta).strftime(Scan.alpacaDateTimeFormat)),
                                             timeframe="minute")[self.symbol]
         return [i.c for i in candles]
