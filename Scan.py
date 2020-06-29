@@ -16,7 +16,7 @@ class Scan:
     def __init__(self, symbol):
         self.symbol = symbol
         self.currentTime = datetime.datetime.now()
-        self.testingTime = datetime.datetime(2020, 6, 26, 14, 2l) #51
+        self.testingTime = datetime.datetime(2020, 6, 26, 15, 31) #6.26.2020.15.49
         self.isMarketOpen = True
         self.nextOpen = None
         self.nextClose = None
@@ -52,29 +52,37 @@ class Scan:
         self.SMA = sum(self.lastXClosingPrices) / len(self.lastXClosingPrices)
         smaHeight = subNoNegatives(self.SMA, self.latestCandle.c)
         insideSMA = True
-        above = below = None
+        completelyAbove = completelyBelow = None
 
         if smaHeight > barSize or smaHeight < 0:
             print("out of bounds")
             insideSMA = False
-            above = smaHeight < 0
-            below = not above
+            # above = smaHeight < 0
+            # below = not above
+        completelyAbove = min(self.latestCandle.o, self.latestCandle.c) > self.SMA
+        completelyBelow = max(self.latestCandle.o, self.latestCandle.c) < self.SMA
         print(self.SMA)
         print(self.lastXClosingPrices)
+        print(self.latestCandle)
+        print(completelyAbove)
+        print(completelyBelow)
+        print(smaHeight)
+        print(minimumReq)
+        print(insideSMA)
         viableCrossover = smaHeight > minimumReq and insideSMA
-        if above:
-            return "bull"
-        elif below:
-            return "bear"
-        elif viableCrossover:
+
+        if viableCrossover:
+            print("viablecross")
             if (self.SMA - min(self.latestCandle.o , self.latestCandle.c)) < (max(self.latestCandle.c , self.latestCandle.o) - self.SMA):
                 return "bull"
             else:
                 return "bear"
+        elif completelyAbove:
+            return "bull"
+        elif completelyBelow:
+            return "bear"
         else:
-            print("nonviablecross")
-
-
+            print("caught")
 
     def onTick(self):
         # once awake, check prices, get new SMA, check for a signal
