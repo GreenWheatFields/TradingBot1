@@ -16,7 +16,7 @@ class Scan:
     def __init__(self, symbol):
         self.symbol = symbol
         self.currentTime = datetime.datetime.now()
-        self.testingTime = datetime.datetime(2020, 6, 26, 15, 31) #6.26.2020.15.49
+        self.testingTime = datetime.datetime(2020, 6, 29, 14, 23)
         self.isMarketOpen = True
         self.nextOpen = None
         self.nextClose = None
@@ -49,7 +49,10 @@ class Scan:
         print("here")
         barSize = subNoNegatives(self.latestCandle.o, self.latestCandle.c)
         minimumReq = barSize * 0.501
+
+
         self.SMA = sum(self.lastXClosingPrices) / len(self.lastXClosingPrices)
+
         smaHeight = subNoNegatives(self.SMA, self.latestCandle.c)
         insideSMA = True
         completelyAbove = completelyBelow = None
@@ -61,22 +64,16 @@ class Scan:
             # below = not above
         completelyAbove = min(self.latestCandle.o, self.latestCandle.c) > self.SMA
         completelyBelow = max(self.latestCandle.o, self.latestCandle.c) < self.SMA
-        print(self.SMA)
-        print(self.lastXClosingPrices)
         print(self.latestCandle)
-        print(completelyAbove)
-        print(completelyBelow)
-        print(smaHeight)
-        print(minimumReq)
-        print(insideSMA)
-        viableCrossover = smaHeight > minimumReq and insideSMA
+        print(self.SMA)
+        print(self.SMA - min(self.latestCandle.c, self.latestCandle.o))
+        print(max(self.latestCandle.c , self.latestCandle.o) - self.SMA)
 
-        if viableCrossover:
-            print("viablecross")
-            if (self.SMA - min(self.latestCandle.o , self.latestCandle.c)) < (max(self.latestCandle.c , self.latestCandle.o) - self.SMA):
-                return "bull"
-            else:
+        if insideSMA:
+            if self.SMA - min(self.latestCandle.c, self.latestCandle.o) > max(self.latestCandle.c , self.latestCandle.o) - self.SMA:
                 return "bear"
+            else:
+                return "bull"
         elif completelyAbove:
             return "bull"
         elif completelyBelow:
