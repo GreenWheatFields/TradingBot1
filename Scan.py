@@ -7,16 +7,20 @@ from Trade import Trade
 import json
 import sys
 import requests
+import os
 
 
 class Scan:
+    os.environ["APCA_API_BASE_URL"] = "https://paper-api.alpaca.markets"
     alpacaAPI = alpaca_trade_api.REST(ALPACA_PUBLIC_KEY, ALPACA_PRIVATE_KEY, api_version="v2")
     alpacaDateTimeFormat = "%Y-%m-%dT%H:%M:%S"
+    print(os.getenv("APCA_API_BASE_URL"))
 
     def __init__(self, symbol):
         self.symbol = symbol
         self.currentTime = datetime.datetime.now()
         self.testingTime = datetime.datetime(2020, 6, 29, 14, 4)
+        self.testingTime = self.currentTime
         self.isMarketOpen = True
         self.nextOpen = None
         self.nextClose = None
@@ -33,13 +37,12 @@ class Scan:
 
     def lookForTrades(self):
         if self.isMarketOpen:
-            # while self.currentTime.second != 0:
-            #     print("waitng")
-            #     print(self.currentTime)
-            #     self.currentTime = datetime.datetime.now()
-            print(self.testingTime)
-            self.onTick()
-            # self.candleColor = "red" if self.lastXCandles.o > self.lastXCandles.c else "green"
+            while self.isMarketOpen:
+                self.onTick()
+                print("sleeping")
+                sleeptime = 60 - datetime.datetime.utcnow().second
+                time.sleep(sleeptime + 1)
+
 
         else:
             self.checkMarketConditions()
@@ -75,18 +78,23 @@ class Scan:
         print(self.bias)
         if not self.openTrade:
             # not sure how this interaction works, when a trade closes itself, can it still be refernced?
-            self.currentTrade = Trade(self.bias, self, "trailingStop", Scan.alpacaAPI)
+            self.currentTrade = Trade(self, "trailingStop", Scan.alpacaAPI, self.bias)
             self.currentTrade.open()
-            while not self.currentTrade.filled:
-                # do something
-                pass
-
+            self.openTrade = True
+            print("opening trade")
+            # while not self.currentTrade.filled:
+            #     # do something
+            #     pass
+            return
         elif self.openTrade and self.currentTrade.bias != self.bias:
             self.currentTrade.close()
-
+            self.currentTrade = Trade(self, "trailingStop", Scan.alpacaAPI, self.bias)
+            self.currentTrade.open()
+            print("bew trade")
+            return
         elif self.openTrade and self.currentTrade.bias == self.bias:
-            # do nothing
-            pass
+            print("doing nothing")
+            return
 
     def checkMarketConditions(self):
         response = Scan.alpacaAPI.get_clock()
@@ -102,6 +110,9 @@ class Scan:
 
     @staticmethod
     def KillSwitch(self):
+        pass
+    def start(self):
+        #todo check market conditoins
         pass
 
 
