@@ -49,13 +49,17 @@ class Scan:
 
     def isSignal(self):
         self.SMA = sum(self.lastXClosingPrices) / len(self.lastXClosingPrices)
-        insideSMA = False if self.SMA > max(self.latestCandle.c, self.latestCandle.o) or self.SMA < min(self.latestCandle.c, self.latestCandle.o) else True
+        insideSMA = False if self.SMA > max(self.latestCandle.c, self.latestCandle.o) or self.SMA < min(
+            self.latestCandle.c, self.latestCandle.o) else True
 
         completelyAbove = min(self.latestCandle.o, self.latestCandle.c) > self.SMA
         completelyBelow = max(self.latestCandle.o, self.latestCandle.c) < self.SMA
-
+        print("SMA", self.SMA)
+        print("completelyAbove", completelyAbove)
+        print("completlybelow", completelyBelow)
         if insideSMA:
-            if self.SMA - min(self.latestCandle.c, self.latestCandle.o) > max(self.latestCandle.c, self.latestCandle.o) - self.SMA:
+            if self.SMA - min(self.latestCandle.c, self.latestCandle.o) > max(self.latestCandle.c,
+                                                                              self.latestCandle.o) - self.SMA:
                 return "bear"
             else:
                 return "bull"
@@ -70,29 +74,33 @@ class Scan:
     def onTick(self):
         # once awake, check prices, get new SMA, check for a signal
         self.lastXClosingPrices = self.getClosingPrices(10)
+        print(self.lastXClosingPrices)
         self.latestCandle = \
-        Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="{}-04:00".format(self.testingTime.strftime(Scan.alpacaDateTimeFormat)), timeframe="minute")[self.symbol][0]
+            Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=1,
+                                      end="{}-04:00".format(self.testingTime.strftime(Scan.alpacaDateTimeFormat)),
+                                      timeframe="minute")[self.symbol][0]
+
         self.lastXClosingPrices.pop(0)
         self.lastXClosingPrices.append(self.latestCandle.c)
+        print(self.lastXClosingPrices)
+        print(self.latestCandle)
+        print(self.latestCandle.t)
+        print(self.testingTime)
         self.bias = self.isSignal()
         print(self.bias)
         if not self.openTrade:
-            # not sure how this interaction works, when a trade closes itself, can it still be refernced?
-            self.currentTrade = Trade(self, "trailingStop", Scan.alpacaAPI, self.bias)
+            self.currentTrade = Trade(self, Scan.alpacaAPI, self.bias)
             self.currentTrade.open()
             self.openTrade = True
             print("opening trade")
-            # while not self.currentTrade.filled:
-            #     # do something
-            #     pass
             return
         elif self.openTrade and self.currentTrade.bias != self.bias:
             self.currentTrade.close()
-            self.currentTrade = Trade(self, "trailingStop", Scan.alpacaAPI, self.bias)
+            self.currentTrade = Trade(self, Scan.alpacaAPI, self.bias)
             self.currentTrade.open()
-            print("bew trade")
+            print("bear trade")
             return
-        elif self.openTrade and self.currentTrade.bias == self.bias:
+        else:
             print("doing nothing")
             return
 
@@ -104,18 +112,23 @@ class Scan:
 
     def getClosingPrices(self, amount: int) -> list:
         timedelta = datetime.timedelta(minutes=1)
-        candles = Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=amount, end="{}-04:00".format((self.testingTime - timedelta).strftime(Scan.alpacaDateTimeFormat)),
+        candles = Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=amount, end="{}-04:00".format(
+            (self.testingTime - timedelta).strftime(Scan.alpacaDateTimeFormat)),
                                             timeframe="minute")[self.symbol]
         return [i.c for i in candles]
 
     @staticmethod
     def KillSwitch(self):
         pass
+
     def start(self):
-        #todo check market conditoins
-        pass
+        print("waiting for next full minute to get data")
+        sleeptime = 60 - datetime.datetime.utcnow().second
+        time.sleep(sleeptime + 1)
+        self.lookForTrades()
+
 
 
 if __name__ == '__main__':
     scan = Scan("SPY")
-    scan.lookForTrades()
+    scan.start()
