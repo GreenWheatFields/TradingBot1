@@ -21,8 +21,10 @@ class Trade(threading.Thread):
 
     def openAndMonitor(self):
         # market orders for now.
+        print("openandmonitor")
         self.order = self.api.submit_order(symbol=self.master.symbol, qty=1, side=self.side, type="market", time_in_force="day")
         self.order = self.api.get_order(self.order.id)
+        print(self.order)
         self.start()
 
     def close(self):
@@ -30,10 +32,12 @@ class Trade(threading.Thread):
         self.master.currentTrade = None
 
     def run(self):
-        self.trailingStop = self.order.filled_avg_price - self.lossTooBig
+        # todo, add print statements, and remove pointless ones
+        #sometimes orders aren't filled when this is called todo, check if an order is filled in the open method
+        self.trailingStop = float(self.order.filled_avg_price) - self.lossTooBig
         while not self.stopSignal.isSet():
-            self.currentPrice = self.api.get_last_quote(self.master.symbol)
-            if float(self.currentPrice) < self.trailingStop:
+            self.currentPrice = float(self.api.get_last_quote(self.master.symbol).askprice) #todo switch between bid and ask price depending on side
+            if self.currentPrice < self.trailingStop:
                 print("closing due to intial stop price hit")
                 self.close()
                 break

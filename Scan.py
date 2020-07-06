@@ -19,7 +19,7 @@ class Scan:
         self.symbol = symbol
         self.currentTime = datetime.datetime.now()
         self.testingTime = datetime.datetime(2020, 7, 2, 9, 45)
-        # self.testingTime = self.currentTime
+        self.testingTime = self.currentTime
         self.isMarketOpen = True
         # self.nextOpen = None
         # self.nextClose = None
@@ -38,9 +38,9 @@ class Scan:
                 self.onTick()
                 print("sleeping")
                 sleeptime = 60 - datetime.datetime.utcnow().second
-                # time.sleep(sleeptime + 1)
-                time.sleep(2)
-                self.testingTime += datetime.timedelta(minutes=1)
+                time.sleep(sleeptime + 1)
+                # time.sleep(2)
+                # self.testingTime += datetime.timedelta(minutes=1)
         else:
             self.checkMarketConditions()
 
@@ -52,10 +52,10 @@ class Scan:
 
         self.lastXClosingPrices.pop(0)
         self.lastXClosingPrices.append(self.latestCandle.c)
-        print(self.lastXClosingPrices)
-        print(self.latestCandle)
-        print(self.latestCandle.t)
-        print(self.testingTime)
+        # print(self.lastXClosingPrices)
+        # print(self.latestCandle)
+        # print(self.latestCandle.t)
+        # print(self.testingTime)
         self.bias = self.isSignal()
         print(self.bias)
         if self.currentTrade is None:
