@@ -9,6 +9,7 @@ class Trade(threading.Thread):
         super().__init__()
         self.master = scanObject
         self.side = "buy" if self.master.bias == "bull" else "sell"
+        self.priceType = "askprice" if self.side == "sell" else "bidprice"
         self.bias = bias
         self.api = api
         self.order = None
@@ -21,24 +22,32 @@ class Trade(threading.Thread):
 
     def openAndMonitor(self):
         # market orders for now.
-        print("openandmonitor")
+        print("trade object opening order")
         self.order = self.api.submit_order(symbol=self.master.symbol, qty=1, side=self.side, type="market", time_in_force="day")
+        print("trade object waiting for fill")
+        time.sleep(2)
         self.order = self.api.get_order(self.order.id)
-        print(self.order)
-        self.start()
+        if self.order.filled_avg_price is None:
+            # todo, handle this exception better
+            time.sleep(2)
+        else:
+            print(self.order)
+        return
 
     def close(self):
         self.api.close_all_positions()
         self.master.currentTrade = None
 
     def run(self):
-        # todo, add print statements, and remove pointless ones
-        #sometimes orders aren't filled when this is called todo, check if an order is filled in the open method
+        self.openAndMonitor()
         self.trailingStop = float(self.order.filled_avg_price) - self.lossTooBig
         while not self.stopSignal.isSet():
-            self.currentPrice = float(self.api.get_last_quote(self.master.symbol).askprice) #todo switch between bid and ask price depending on side
+            self.currentPrice = float(getattr(self.api.get_last_quote(self.master.symbol), self.priceType))
+            print(self.currentPrice, "current stock price")
+            print(self.trailingStop, "trade trailing stop")
             if self.currentPrice < self.trailingStop:
-                print("closing due to intial stop price hit")
+                print("trailing stop hit")
+                print(self.currentPrice, "current price", self.trailingStop, "trailing stop")
                 self.close()
                 break
             else:

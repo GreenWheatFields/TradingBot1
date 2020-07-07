@@ -36,9 +36,8 @@ class Scan:
         if self.isMarketOpen:
             while self.isMarketOpen:
                 self.onTick()
-                print("sleeping")
-                sleeptime = 60 - datetime.datetime.utcnow().second
-                time.sleep(sleeptime + 1)
+                print("master thread sleeping")
+                self.sleepTillNextMinute()
                 # time.sleep(2)
                 # self.testingTime += datetime.timedelta(minutes=1)
         else:
@@ -47,30 +46,26 @@ class Scan:
     def onTick(self):
         # once awake, check prices, get new SMA, check for a signal
         self.lastXClosingPrices = self.getClosingPrices(10)
-        print(self.lastXClosingPrices)
-        self.latestCandle = Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="{}-04:00".format(self.testingTime.strftime(Scan.alpacaDateTimeFormat)),timeframe="minute")[self.symbol][0]
-
+        self.latestCandle = \
+        Scan.alpacaAPI.get_barset(symbols=self.symbol, limit=1, end="{}-04:00".format(self.testingTime.strftime(Scan.alpacaDateTimeFormat)), timeframe="minute")[self.symbol][0]
         self.lastXClosingPrices.pop(0)
         self.lastXClosingPrices.append(self.latestCandle.c)
-        # print(self.lastXClosingPrices)
-        # print(self.latestCandle)
-        # print(self.latestCandle.t)
-        # print(self.testingTime)
         self.bias = self.isSignal()
         print(self.bias)
         if self.currentTrade is None:
+            print("master opening trade", self.bias)
             self.currentTrade = Trade(self, Scan.alpacaAPI, self.bias)
-            self.currentTrade.openAndMonitor()
-            print("opened trade", self.bias)
+            self.currentTrade.start()
+            print("here")
             return
         elif self.currentTrade.bias != self.bias:
+            print("master reversed trade", self.bias)
             self.currentTrade.interrupt()
             self.currentTrade.close()
             self.currentTrade = Trade(self, Scan.alpacaAPI, self.bias)
             self.currentTrade.openAndMonitor()
-            print("reversed trade", self.bias)
         else:
-            print("no action required")
+            print("master no action required")
             return
 
     def isSignal(self):
@@ -79,9 +74,6 @@ class Scan:
 
         completelyAbove = min(self.latestCandle.o, self.latestCandle.c) > self.SMA
         completelyBelow = max(self.latestCandle.o, self.latestCandle.c) < self.SMA
-        print("SMA", self.SMA)
-        print("completelyAbove", completelyAbove)
-        print("completlybelow", completelyBelow)
         if insideSMA:
             if self.SMA - min(self.latestCandle.c, self.latestCandle.o) > max(self.latestCandle.c, self.latestCandle.o) - self.SMA:
                 return "bear"
@@ -113,13 +105,17 @@ class Scan:
             self.currentTrade.close()
         sys.exit(0)
 
-    def start(self):
-        # print("waiting for next full minute to get data")
-        # sleeptime = 60 - datetime.datetime.utcnow().second
-        # time.sleep(sleeptime + 1)
+    def sleepTillNextMinute(self, overflow=1, prin=False):
+        if prin:
+            print("sleeping till next minute")
+        sleeptime = 60 - datetime.datetime.utcnow().second
+        time.sleep(sleeptime + 1)
+
+    def main(self):
+        # self.sleepTillNextMinute(prin=True)
         self.lookForTrades()
 
 
 if __name__ == '__main__':
     scan = Scan("SPY")
-    scan.start()
+    scan.main()
